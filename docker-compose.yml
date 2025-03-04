@@ -1,0 +1,85 @@
+version: '3'
+services:
+
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        image: rapidgo/php
+        container_name: rapidgo.app
+        restart: always
+        tty: true
+        environment:
+            SERVICE_NAME: app
+            SERVICE_TAGS: dev
+        working_dir: /var/www
+        volumes:
+            - ./:/var/www
+            - ./docker/local.ini:/usr/local/etc/php/conf.d/local.ini
+        networks:
+            - rapidgo-network
+
+    #Nginx Service
+    webserver:
+        image: nginx:alpine
+        container_name: rapidgo.nginx
+        restart: always
+        tty: true
+        ports:
+            - "8080:80"   # Change Nginx HTTP port from 80 to 8080
+            - "4443:443"  # Change Nginx HTTPS port from 443 to 4443
+        volumes:
+            - "./:/var/www"
+            - "./docker/conf.d/:/etc/nginx/conf.d/"
+        networks:
+            - "rapidgo-network"
+
+    db:
+        image: mysql:8.0
+        container_name: rapidgo.db
+        restart: always
+        tty: true
+        environment:
+            MYSQL_DATABASE: "rapidgo"
+            MYSQL_ROOT_PASSWORD: "secret"
+            MYSQL_USER: "rapidgo"
+            MYSQL_PASSWORD: "secret"
+            SERVICE_TAGS: dev
+            SERVICE_NAME: mysql
+        ports:
+            - "3304:3306"
+        volumes:
+            - mysqldata:/var/lib/mysql/
+            - ./docker/my.cnf:/etc/mysql/my.cnf
+        networks:
+            - rapidgo-network
+
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        container_name: rapidgo.phpmyadmin
+        environment:
+            PMA_HOST: db
+            MYSQL_USER: "rapidgo"
+            MYSQL_PASSWORD: "123123"
+        ports:
+            - "8482:80"
+
+    redis:
+        image: redis:latest
+        container_name: rapidgo.redis
+        volumes:
+            - redisdata:/data
+        ports:
+            - "6377:6379"
+
+volumes:
+    mysqldata:
+        driver: "local"
+    redisdata:
+        driver: "local"
+    phpmyadmindata:
+        driver: "local"
+
+networks:
+    rapidgo-network:
+        driver: bridge
